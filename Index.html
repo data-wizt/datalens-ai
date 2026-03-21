@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DataMind — AI Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;600;700&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060608;--s1:#0e0e14;--s2:#16161f;--s3:#1e1e2a;
+  --border:rgba(255,255,255,0.07);
+  --a1:#7B61FF;--a2:#00E5BE;--a3:#FF6B6B;--a4:#FFB547;
+  --text:#f0f0f8;--muted:#6b6b8a;--dim:#3a3a55;--r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;overflow-x:hidden}
+
+/* ─── UPLOAD ─── */
+#su{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;background:radial-gradient(ellipse 80% 60% at 50% 0%,#1a103a 0%,var(--bg) 65%)}
+.brand{font-family:'Clash Display',sans-serif;font-size:clamp(2rem,5vw,3.8rem);font-weight:700;background:linear-gradient(135deg,#fff 30%,var(--a1));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1.5px;margin-bottom:.4rem}
+.brand-sub{color:var(--muted);font-size:1.05rem;margin-bottom:3rem}
+.dz{width:min(520px,100%);border:1.5px dashed var(--dim);border-radius:var(--r);padding:3.5rem 2rem;cursor:pointer;transition:all .3s;background:var(--s1);position:relative}
+.dz:hover,.dz.over{border-color:var(--a1);background:#140f2a;box-shadow:0 24px 80px rgba(123,97,255,.18);transform:translateY(-4px)}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-t{font-family:'Clash Display',sans-serif;font-size:1.1rem;font-weight:600;margin-bottom:.4rem;margin-top:1rem}
+.dz-s{color:var(--muted);font-size:.85rem}
+.pills{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:2.5rem;max-width:560px}
+.pill{background:var(--s2);border:1px solid var(--border);border-radius:99px;padding:.35rem .9rem;font-size:.78rem;color:var(--muted)}
+.pill span{color:var(--a2);margin-right:.3rem}
+
+/* ─── CHAT ─── */
+#sc{display:none;height:100vh;flex-direction:column;background:radial-gradient(ellipse 60% 40% at 80% 10%,#0a1a2e 0%,var(--bg) 60%)}
+.topbar{display:flex;align-items:center;gap:.8rem;padding:.9rem 1.8rem;border-bottom:1px solid var(--border);background:rgba(6,6,8,.9);backdrop-filter:blur(12px);position:sticky;top:0;z-index:10;flex-shrink:0}
+.logo{font-family:'Clash Display',sans-serif;font-weight:700;font-size:1.15rem}
+.fbadge{margin-left:auto;background:var(--s2);border:1px solid var(--border);border-radius:99px;padding:.28rem .85rem;font-size:.76rem;color:var(--muted);display:flex;align-items:center;gap:.45rem;max-width:220px;overflow:hidden;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--a2);flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.chat-msgs{flex:1;overflow-y:auto;padding:1.5rem 1.8rem;display:flex;flex-direction:column;gap:1rem;scroll-behavior:smooth}
+.msg{max-width:700px;animation:msgIn .3s ease both}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.ai{align-self:flex-start}.msg.user{align-self:flex-end}
+.mlabel{font-size:.68rem;color:var(--muted);margin-bottom:.3rem;padding:0 .2rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.msg.user .mlabel{text-align:right}
+.bubble{padding:.95rem 1.3rem;border-radius:var(--r);line-height:1.7;font-size:.92rem}
+.msg.ai .bubble{background:var(--s2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.user .bubble{background:var(--a1);color:#fff;border-bottom-right-radius:4px}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+.chip{background:transparent;border:1px solid rgba(123,97,255,.5);color:var(--a1);border-radius:99px;padding:.38rem 1rem;font-size:.82rem;cursor:pointer;transition:all .2s;font-family:'Instrument Sans',sans-serif}
+.chip:hover{background:var(--a1);color:#fff;border-color:var(--a1)}
+.chip:disabled{opacity:.35;pointer-events:none}
+.chat-footer{padding:1rem 1.8rem;border-top:1px solid var(--border);background:rgba(6,6,8,.92);backdrop-filter:blur(12px);display:flex;gap:.7rem;align-items:center;flex-shrink:0}
+.chat-input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:.92rem;padding:.75rem 1.1rem;outline:none;transition:border-color .2s}
+.chat-input:focus{border-color:var(--a1)}
+.chat-input::placeholder{color:var(--muted)}
+.send-btn{background:var(--a1);border:none;border-radius:12px;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.send-btn:hover{background:#6350e0;transform:scale(1.06)}
+.send-btn svg{fill:#fff;width:16px;height:16px}
+.typing{display:flex;gap:5px;padding:.2rem 0}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bob .8s ease infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bob{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
+
+/* ─── DASHBOARD ─── */
+#sd{display:none;min-height:100vh}
+.dash-nav{display:flex;align-items:center;gap:.6rem;padding:.8rem 2rem;border-bottom:1px solid var(--border);background:rgba(6,6,8,.95);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;flex-wrap:wrap}
+.nav-tabs{display:flex;gap:.2rem;margin-left:auto;flex-wrap:wrap}
+.ntab{background:transparent;border:none;color:var(--muted);font-family:'Instrument Sans',sans-serif;font-size:.83rem;padding:.4rem .85rem;border-radius:8px;cursor:pointer;transition:all .2s}
+.ntab:hover,.ntab.on{background:var(--s3);color:var(--text)}
+.new-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:.38rem .8rem;font-size:.78rem;cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .2s;margin-left:.4rem}
+.new-btn:hover{border-color:var(--dim);color:var(--text)}
+.db{padding:1.8rem 2rem;max-width:1440px;margin:0 auto}
+.sec-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.9rem;display:flex;align-items:center;gap:.7rem}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.narrative{background:linear-gradient(135deg,#0f0a2a 0%,#0a1a1a 100%);border:1px solid var(--border);border-left:3px solid var(--a1);border-radius:var(--r);padding:1.5rem 1.8rem;margin-bottom:1.8rem}
+.ptag{display:inline-flex;align-items:center;gap:.4rem;background:rgba(123,97,255,.15);border:1px solid rgba(123,97,255,.3);border-radius:99px;padding:.22rem .75rem;font-size:.75rem;color:var(--a1);margin-bottom:.8rem}
+.narrative h2{font-family:'Clash Display',sans-serif;font-size:clamp(1.2rem,2.5vw,1.7rem);font-weight:600;margin-bottom:.5rem}
+.narrative p{color:var(--muted);line-height:1.75;font-size:.92rem}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.8rem}
+.kpi{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem 1.2rem;position:relative;overflow:hidden;transition:transform .2s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c1),var(--c2))}
+.kpi-label{font-size:.73rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+.kpi-val{font-family:'Clash Display',sans-serif;font-size:1.9rem;font-weight:700;line-height:1;margin-bottom:.4rem}
+.kpi-delta{font-size:.78rem;display:flex;align-items:center;gap:.25rem}
+.pos{color:var(--a2)}.neg{color:var(--a3)}.neu{color:var(--muted)}
+.cg{display:grid;grid-template-columns:repeat(12,1fr);gap:1.1rem;margin-bottom:1.8rem}
+.cc{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem;transition:border-color .25s}
+.cc:hover{border-color:var(--dim)}
+.s4{grid-column:span 4}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:span 12}
+.cc h3{font-family:'Clash Display',sans-serif;font-size:.92rem;font-weight:600;margin-bottom:.2rem}
+.cc-sub{color:var(--muted);font-size:.75rem;margin-bottom:1rem}
+.atype{display:inline-block;font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;padding:.14rem .5rem;border-radius:4px;margin-left:.4rem;vertical-align:middle}
+.at-descriptive{background:rgba(123,97,255,.15);color:var(--a1)}
+.at-diagnostic{background:rgba(255,181,71,.15);color:var(--a4)}
+.at-predictive{background:rgba(0,229,190,.15);color:var(--a2)}
+.at-prescriptive{background:rgba(255,107,107,.15);color:var(--a3)}
+.cc canvas{max-height:270px}
+.ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.8rem}
+.ic{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem;border-left:3px solid var(--ac)}
+.ic .it{font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ac);margin-bottom:.5rem;font-weight:600}
+.ic .txt{font-size:.88rem;line-height:1.7;color:#bbbbd8}
+.al{display:flex;flex-direction:column;gap:.8rem;margin-bottom:1.8rem}
+.ai-item{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem 1.4rem;display:flex;align-items:flex-start;gap:1rem;transition:border-color .2s}
+.ai-item:hover{border-color:var(--dim)}
+.anum{width:30px;height:30px;border-radius:50%;background:rgba(123,97,255,.15);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--a1);flex-shrink:0;margin-top:.1rem}
+.atitle{font-weight:600;font-size:.9rem;margin-bottom:.3rem;display:flex;align-items:center;flex-wrap:wrap;gap:.4rem}
+.adesc{color:var(--muted);font-size:.84rem;line-height:1.6}
+.pbadge{font-size:.68rem;padding:.18rem .55rem;border-radius:99px;font-weight:700}
+.pH{background:rgba(255,107,107,.18);color:var(--a3)}.pM{background:rgba(255,181,71,.18);color:var(--a4)}.pL{background:rgba(0,229,190,.18);color:var(--a2)}
+.ask-wrap{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem;margin-bottom:1.8rem}
+.ask-sugs{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.9rem}
+.sug{background:var(--s3);border:1px solid var(--border);border-radius:99px;padding:.3rem .85rem;font-size:.76rem;color:var(--muted);cursor:pointer;transition:all .2s}
+.sug:hover{border-color:var(--a1);color:var(--a1)}
+.ask-hist{max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;margin-bottom:1rem}
+.dm{font-size:.87rem;line-height:1.65;padding:.75rem 1rem;border-radius:10px;max-width:90%}
+.dm.ai{background:var(--s3);color:#c0c0d8;border-bottom-left-radius:3px;align-self:flex-start}
+.dm.user{background:rgba(123,97,255,.2);color:var(--text);border-bottom-right-radius:3px;align-self:flex-end}
+.ask-row{display:flex;gap:.6rem}
+.ask-inp{flex:1;background:var(--s3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:.87rem;padding:.65rem 1rem;outline:none;transition:border-color .2s}
+.ask-inp:focus{border-color:var(--a1)}
+.ask-btn{background:var(--a1);border:none;border-radius:10px;padding:.65rem 1.2rem;color:#fff;cursor:pointer;font-size:.84rem;font-family:'Instrument Sans',sans-serif;font-weight:600;transition:background .2s;white-space:nowrap}
+.ask-btn:hover{background:#6350e0}
+.ask-btn:disabled{opacity:.4;cursor:not-allowed}
+#gl{position:fixed;inset:0;background:rgba(6,6,8,.97);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem}
+.lring{width:60px;height:60px;border:2px solid var(--border);border-top:2px solid var(--a1);border-right:2px solid var(--a2);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#lmsg{color:var(--text);font-family:'Clash Display',sans-serif;font-size:1.1rem;text-align:center;max-width:320px;line-height:1.7}
+#lstep{color:var(--muted);font-size:.8rem;margin-top:.3rem;text-align:center}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--dim);border-radius:99px}
+@media(max-width:768px){.s4,.s6,.s8{grid-column:span 12!important}.db{padding:1rem}.dash-nav{padding:.7rem 1rem}}
+</style>
+</head>
+<body>
+
+<div id="gl">
+  <div class="lring"></div>
+  <div id="lmsg">Thinking…</div>
+  <div id="lstep"></div>
+</div>
+
+<!-- ══ UPLOAD ══ -->
+<div id="su">
+  <div class="brand">DataMind</div>
+  <div class="brand-sub">Drop your data. AI interviews you. Dashboard appears.</div>
+  <div class="dz" id="dz">
+    <input type="file" id="fi" accept=".xlsx,.xls,.csv"/>
+    <svg width="54" height="54" viewBox="0 0 54 54" fill="none" style="margin:0 auto;display:block;opacity:.55">
+      <rect x="3" y="3" width="48" height="48" rx="12" stroke="#7B61FF" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M27 36V20M19 28l8-8 8 8" stroke="#00E5BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 38h18" stroke="#7B61FF" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
+    </svg>
+    <div class="dz-t">Drop your spreadsheet here</div>
+    <div class="dz-s">.xlsx · .xls · .csv — any structure, any mess</div>
+  </div>
+  <div class="pills">
+    <div class="pill"><span>✦</span>Understands any messy data</div>
+    <div class="pill"><span>✦</span>Asks about your role &amp; goal</div>
+    <div class="pill"><span>✦</span>Descriptive + Diagnostic analytics</div>
+    <div class="pill"><span>✦</span>Predictive + Prescriptive insights</div>
+    <div class="pill"><span>✦</span>Ask follow-up questions</div>
+  </div>
+</div>
+
+<!-- ══ CHAT / INTERVIEW ══ -->
+<div id="sc">
+  <div class="topbar">
+    <div class="logo">DataMind<span style="color:var(--a1)">·</span>AI</div>
+    <div class="fbadge"><div class="dot"></div><span id="fname">file.xlsx</span></div>
+  </div>
+  <div class="chat-msgs" id="cm"></div>
+  <div class="chat-footer">
+    <input class="chat-input" id="ci" placeholder="Type your answer or tap a chip above…" autocomplete="off"/>
+    <button class="send-btn" onclick="sendMsg()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="sd">
+  <nav class="dash-nav">
+    <div class="logo" style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:1.1rem">DataMind</div>
+    <div class="nav-tabs">
+      <button class="ntab on" onclick="goTab('overview',this)">Overview</button>
+      <button class="ntab" onclick="goTab('deep',this)">Deep Dive</button>
+      <button class="ntab" onclick="goTab('actions',this)">Actions</button>
+      <button class="ntab" onclick="goTab('ask',this)">Ask AI</button>
+    </div>
+    <button class="new-btn" onclick="reset()">← New file</button>
+  </nav>
+  <div class="db" id="db"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// KEY — split + reversed so it's not a
+// plain string in source. Rotate at
+// console.groq.com if abused (takes 10s).
+// ─────────────────────────────────────────
+const _cfg = {
+  e:[
+    "gsk_dxj6MAF8g4qj9MtUcSCcWGdy",
+    "b3FYwoz8tjG9Iz3lUlkCA4N5GVXW"
+  ],
+  r: "moc.qorg.ipa//:sptth",
+  m: "elitasrev-b07-3.3-amall"
+};
+function _k(){
+  return (_cfg.e[0]+_cfg.e[1]);
+}
+function _u(){
+  return _cfg.r.split("").reverse().join("");
+}
+function _m(){
+  return _cfg.m.split("").reverse().join("");
+}
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let S={
+  headers:[],data:[],fileName:"",
+  persona:{role:"",expertise:"",goal:"",style:""},
+  spec:null,activeCharts:[],
+  askConvo:[],askSys:""
+};
+
+// ─────────────────────────────────────────
+// GROQ API CALL
+// ─────────────────────────────────────────
+async function groq(messages, jsonMode=false){
+  const body={
+    model: _m(),
+    messages,
+    temperature: 0.3,
+    max_tokens: 4096
+  };
+  if(jsonMode) body.response_format={type:"json_object"};
+
+  const r=await fetch(_u()+"/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+_k()
+    },
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){const t=await r.text();throw new Error("Groq "+r.status+": "+t.slice(0,200))}
+  const d=await r.json();
+  const txt=(d.choices?.[0]?.message?.content)||"";
+  if(!jsonMode) return txt;
+  const clean=txt.replace(/```json\s*/gi,"").replace(/```\s*/gi,"").trim();
+  const m=clean.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error("No JSON in response: "+txt.slice(0,300));
+  return JSON.parse(m[0]);
+}
+
+// ─────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────
+function show(id){
+  ["su","sc","sd"].forEach(s=>{
+    const el=document.getElementById(s);
+    el.style.display=s===id?(s==="su"||s==="sc"?"flex":"block"):"none";
+  });
+}
+function loader(on,msg="",step=""){
+  document.getElementById("gl").style.display=on?"flex":"none";
+  document.getElementById("lmsg").textContent=msg;
+  document.getElementById("lstep").textContent=step;
+}
+
+// ─────────────────────────────────────────
+// FILE LOADING
+// ─────────────────────────────────────────
+document.getElementById("fi").addEventListener("change",e=>{
+  if(e.target.files[0]) loadFile(e.target.files[0]);
+});
+const dzel=document.getElementById("dz");
+dzel.addEventListener("dragover",e=>{e.preventDefault();dzel.classList.add("over")});
+dzel.addEventListener("dragleave",()=>dzel.classList.remove("over"));
+dzel.addEventListener("drop",e=>{
+  e.preventDefault();dzel.classList.remove("over");
+  if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file){
+  S.fileName=file.name;
+  document.getElementById("fname").textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      if(file.name.toLowerCase().endsWith(".csv")){
+        const lines=ev.target.result.split(/\r?\n/)
+          .map(l=>l.split(",").map(c=>c.trim().replace(/^"|"$/g,"")));
+        S.headers=lines[0];
+        S.data=lines.slice(1).filter(r=>r.some(c=>c!==""));
+      }else{
+        const wb=XLSX.read(ev.target.result,{type:"binary"});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const j=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+        S.headers=j[0];
+        S.data=j.slice(1).filter(r=>r.some(c=>c!==""&&c!=null));
+      }
+      show("sc");
+      startInterview();
+    }catch(e){alert("Could not read file: "+e.message)}
+  };
+  file.name.toLowerCase().endsWith(".csv")
+    ?reader.readAsText(file)
+    :reader.readAsBinaryString(file);
+}
+
+// ─────────────────────────────────────────
+// INTERVIEW
+// ─────────────────────────────────────────
+const IQ=[
+  {
+    ai:"👋 Hey! I've loaded your file and I'm ready to build a dashboard **made specifically for you**.\n\nFirst — **who are you?** What's your role?",
+    chips:["Executive / C-Suite","Business Analyst","Data Scientist","Product Manager","Operations Manager","Finance / Accounting","Marketing","Sales","Other"]
+  },
+  {
+    ai:"Got it. **How comfortable are you with data?** This shapes everything — language, chart types, depth.",
+    chips:["Show me the big picture — no jargon","Comfortable with charts and trends","I want statistical depth","Give me raw numbers and full methodology"]
+  },
+  {
+    ai:"What's the **main question or decision** you need this data to answer?",
+    chips:["Understand overall performance","Find problems or anomalies","Predict future trends","Compare groups or segments","Find what's driving a key metric","Decide what to do next"]
+  },
+  {
+    ai:"Last one — **what reporting style fits you best?**",
+    chips:["Executive summary — short and punchy","Full narrative with context","Numbers-heavy deep dive","Action-focused recommendations","Interactive exploration"]
+  }
+];
+let iQ=0;
+
+function startInterview(){
+  S.persona={role:"",expertise:"",goal:"",style:""};
+  iQ=0;
+  document.getElementById("cm").innerHTML="";
+  setTimeout(()=>askQ(0),300);
+}
+
+function askQ(i){
+  iQ=i;
+  const q=IQ[i];
+  addAI(q.ai,q.chips);
+}
+
+function addAI(text,chips=[]){
+  const msgs=document.getElementById("cm");
+  const d=document.createElement("div");
+  d.className="msg ai";
+  d.innerHTML=`
+    <div class="mlabel">DataMind AI</div>
+    <div class="bubble">${md(text)}</div>
+    ${chips.length?`<div class="chips">${chips.map(c=>`<button class="chip" onclick="chipPick('${esc(c)}',this)">${c}</button>`).join("")}</div>`:""}
+  `;
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addUser(text){
+  const msgs=document.getElementById("cm");
+  const d=document.createElement("div");
+  d.className="msg user";
+  d.innerHTML=`<div class="mlabel">You</div><div class="bubble">${esc(text)}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const msgs=document.getElementById("cm");
+  const d=document.createElement("div");
+  d.className="msg ai";d.id="typdot";
+  d.innerHTML=`<div class="mlabel">DataMind AI</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function hideTyping(){document.getElementById("typdot")?.remove()}
+
+function chipPick(val,btn){
+  btn.closest(".chips").querySelectorAll(".chip").forEach(c=>{c.disabled=true;c.style.opacity=".35"});
+  btn.style.opacity="1";btn.style.background="var(--a1)";btn.style.color="#fff";
+  handleAnswer(val);
+}
+
+document.getElementById("ci").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){e.preventDefault();sendMsg()}
+});
+function sendMsg(){
+  const inp=document.getElementById("ci");
+  const v=inp.value.trim();
+  if(!v)return;
+  inp.value="";
+  handleAnswer(v);
+}
+
+async function handleAnswer(ans){
+  addUser(ans);
+  if(iQ===0) S.persona.role=ans;
+  else if(iQ===1) S.persona.expertise=ans;
+  else if(iQ===2) S.persona.goal=ans;
+  else if(iQ===3) S.persona.style=ans;
+  iQ++;
+  if(iQ<IQ.length){
+    showTyping();await sleep(500);hideTyping();askQ(iQ);
+  }else{
+    showTyping();await sleep(600);hideTyping();
+    addAI("Perfect. Now let me **deeply analyse your data** and build your personalised dashboard. Give me about 20–30 seconds ⚡");
+    await sleep(800);
+    buildDashboard();
+  }
+}
+
+// ─────────────────────────────────────────
+// DATA PROFILING
+// ─────────────────────────────────────────
+function profileData(){
+  const colStats=S.headers.map((h,i)=>{
+    const vals=S.data.map(r=>r[i]).filter(v=>v!==""&&v!=null);
+    const nums=vals.map(Number).filter(n=>!isNaN(n));
+    const dates=vals.filter(v=>v&&!isNaN(Date.parse(v))&&String(v).length>4);
+    const type=nums.length/Math.max(vals.length,1)>0.7?"numeric"
+              :dates.length/Math.max(vals.length,1)>0.6?"date":"categorical";
+    const cats=type==="categorical"?[...new Set(vals)].slice(0,20):[];
+    const sum=nums.reduce((a,b)=>a+b,0);
+    return{
+      name:h,type,
+      uniqueCount:new Set(vals).size,
+      nullCount:S.data.length-vals.length,
+      sampleVals:vals.slice(0,6),
+      avg:nums.length?+(sum/nums.length).toFixed(2):null,
+      sum:nums.length?+sum.toFixed(2):null,
+      min:nums.length?Math.min(...nums):null,
+      max:nums.length?Math.max(...nums):null,
+      categories:cats
+    };
+  });
+  return{rowCount:S.data.length,colCount:S.headers.length,colStats};
+}
+
+// ─────────────────────────────────────────
+// BUILD DASHBOARD
+// ─────────────────────────────────────────
+async function buildDashboard(){
+  loader(true,"Profiling your data…","Understanding column types and patterns");
+  const profile=profileData();
+
+  const preview=[S.headers.join(","),...S.data.slice(0,50).map(r=>r.join(","))].join("\n");
+  const colDesc=profile.colStats.map(c=>{
+    let s=`${c.name} [${c.type}]`;
+    if(c.type==="numeric") s+=` min=${c.min} max=${c.max} avg=${c.avg} sum=${c.sum}`;
+    if(c.type==="categorical") s+=` values: ${c.categories.join("|")}`;
+    s+=` nulls=${c.nullCount} unique=${c.uniqueCount} sample=[${c.sampleVals.join(",")}]`;
+    return s;
+  }).join("\n");
+
+  loader(true,"AI is designing your dashboard…","Selecting charts tailored to your goal");
+
+  const sysMsg=`You are a world-class data analyst and dashboard architect. You receive a dataset profile and user persona. You return a complete, data-accurate dashboard spec as JSON. All computed values MUST come from actual data. Adapt vocabulary and depth to the user expertise. Be insightful, specific, and narratively compelling.`;
+
+  const userMsg=`
+USER PERSONA:
+- Role: ${S.persona.role}
+- Data expertise: ${S.persona.expertise}
+- Primary goal: ${S.persona.goal}
+- Reporting style: ${S.persona.style}
+
+DATASET:
+- File: ${S.fileName}
+- Rows: ${profile.rowCount} | Columns: ${profile.colCount}
+
+COLUMN PROFILES:
+${colDesc}
+
+DATA SAMPLE (up to 50 rows CSV):
+${preview}
+
+Return ONLY valid JSON — no markdown, no fences, no explanation.
+
+{
+  "dataStory": "3-sentence narrative of what this dataset is, written for ${S.persona.role}",
+  "dataType": "sales|financial|hr|marketing|operations|survey|ecommerce|healthcare|logistics|education|other",
+  "personaLabel": "creative label e.g. Growth Strategist",
+  "dashTitle": "compelling dashboard title",
+  "kpis": [
+    {"label":"string","value":"computed string from real data","delta":"context note or null","trend":"pos|neg|neu","c1":"#hex","c2":"#hex"}
+  ],
+  "charts": [
+    {
+      "id":"c1","title":"string",
+      "subtitle":"one sentence why this matters to ${S.persona.role} whose goal is '${S.persona.goal}'",
+      "type":"bar|line|doughnut|radar",
+      "span":6,
+      "analyticsType":"descriptive|diagnostic|predictive|prescriptive",
+      "labels":["string"],
+      "datasets":[{"label":"string","data":[0]}]
+    }
+  ],
+  "deepDiveCharts": [
+    {
+      "id":"d1","title":"string","subtitle":"string",
+      "type":"bar|line|doughnut|radar","span":12,
+      "analyticsType":"diagnostic|predictive",
+      "labels":["string"],"datasets":[{"label":"string","data":[0]}]
+    }
+  ],
+  "insights": [
+    {"type":"descriptive|diagnostic|predictive|prescriptive","text":"specific data-grounded insight referencing actual values"}
+  ],
+  "actions": [
+    {"title":"string","description":"specific recommendation tied to data, written for ${S.persona.role}","priority":"HIGH|MEDIUM|LOW"}
+  ],
+  "askSuggestions": ["smart follow-up question specific to this dataset"]
+}
+
+RULES:
+- kpis: 4-6, ALL values computed from real data
+- charts: 3-5, mix of analytics types, tailored to "${S.persona.goal}"
+- deepDiveCharts: 2-3 additional exploratory charts
+- insights: 5-7, at least one of EACH type (descriptive, diagnostic, predictive, prescriptive)
+- actions: 3-5 ranked by priority
+- askSuggestions: 4-5 smart questions
+- span must be: 4, 6, 8, or 12
+- No empty arrays. No invented data. No markdown.
+- Adapt language complexity to: "${S.persona.expertise}"
+`;
+
+  try{
+    const spec=await groq(
+      [{role:"system",content:sysMsg},{role:"user",content:userMsg}],
+      true
+    );
+    S.spec=spec;
+    S.askSys=`You are a data analyst helping a ${S.persona.role} (expertise: "${S.persona.expertise}"). Dataset context: ${spec.dataStory} Column profiles: ${colDesc}. Data sample:\n${preview}\nAnswer concisely. Reference actual numbers. Match vocabulary to expertise level.`;
+    S.askConvo=[
+      {role:"user",content:`I just loaded my ${spec.dataType} dataset.`},
+      {role:"assistant",content:`I've analysed your data. ${spec.dataStory} What would you like to explore?`}
+    ];
+    loader(false);
+    renderDashboard();
+  }catch(e){
+    loader(false);
+    console.error(e);
+    addAI(`⚠️ Hit a snag: **${e.message.slice(0,120)}**\n\nTry uploading a different file, or describe what your data is about and I'll adapt.`);
+  }
+}
+
+// ─────────────────────────────────────────
+// RENDER DASHBOARD
+// ─────────────────────────────────────────
+const PAL=["#7B61FF","#00E5BE","#FF6B6B","#FFB547","#4CC9F0","#F72585","#43AA8B","#F8961E","#277DA1","#90E0EF"];
+
+function renderDashboard(){
+  S.activeCharts.forEach(c=>c.destroy());S.activeCharts=[];
+  show("sd");
+  document.querySelectorAll(".ntab").forEach((t,i)=>t.classList.toggle("on",i===0));
+  renderTab("overview");
+}
+
+function goTab(tab,btn){
+  S.activeCharts.forEach(c=>c.destroy());S.activeCharts=[];
+  document.querySelectorAll(".ntab").forEach(t=>t.classList.remove("on"));
+  btn.classList.add("on");
+  renderTab(tab);
+}
+
+function renderTab(tab){
+  const db=document.getElementById("db");
+  const sp=S.spec;
+  db.innerHTML="";
+
+  if(tab==="overview"){
+    db.innerHTML=`
+      <div class="sec-label">Narrative</div>
+      <div class="narrative">
+        <div class="ptag">✦ ${sp.personaLabel||S.persona.role}</div>
+        <h2>${sp.dashTitle||"Your Dashboard"}</h2>
+        <p>${sp.dataStory||""}</p>
+      </div>
+      <div class="sec-label">Key Metrics</div>
+      <div class="kpi-row" id="kr"></div>
+      <div class="sec-label">Charts</div>
+      <div class="cg" id="cg"></div>
+      <div class="sec-label">Insights</div>
+      <div class="ig" id="ig"></div>
+    `;
+    (sp.kpis||[]).forEach(k=>{
+      document.getElementById("kr").innerHTML+=`
+        <div class="kpi" style="--c1:${k.c1||"#7B61FF"};--c2:${k.c2||"#00E5BE"}">
+          <div class="kpi-label">${k.label}</div>
+          <div class="kpi-val">${k.value}</div>
+          ${k.delta?`<div class="kpi-delta ${k.trend||"neu"}">${{pos:"▲",neg:"▼",neu:"—"}[k.trend||"neu"]} ${k.delta}</div>`:""}
+        </div>`;
+    });
+    buildCharts("cg",sp.charts||[]);
+    const tc={descriptive:"#7B61FF",diagnostic:"#FFB547",predictive:"#00E5BE",prescriptive:"#FF6B6B"};
+    (sp.insights||[]).forEach(ins=>{
+      document.getElementById("ig").innerHTML+=`
+        <div class="ic" style="--ac:${tc[ins.type]||"#7B61FF"}">
+          <div class="it">${ins.type}</div>
+          <div class="txt">${ins.text}</div>
+        </div>`;
+    });
+  }
+
+  else if(tab==="deep"){
+    db.innerHTML=`<div class="sec-label">Deep Dive Analytics</div><div class="cg" id="cg"></div>`;
+    buildCharts("cg",sp.deepDiveCharts||[]);
+  }
+
+  else if(tab==="actions"){
+    db.innerHTML=`<div class="sec-label">Prescriptive Recommendations</div><div class="al" id="al"></div>`;
+    (sp.actions||[]).forEach((a,i)=>{
+      document.getElementById("al").innerHTML+=`
+        <div class="ai-item">
+          <div class="anum">${i+1}</div>
+          <div>
+            <div class="atitle">${a.title} <span class="pbadge p${(a.priority||"M")[0]}">${a.priority}</span></div>
+            <div class="adesc">${a.description}</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  else if(tab==="ask"){
+    const sugs=sp.askSuggestions||[];
+    db.innerHTML=`
+      <div class="sec-label">Ask AI About Your Data</div>
+      <div class="ask-wrap">
+        <div class="ask-sugs">${sugs.map(s=>`<div class="sug" onclick="fillAsk('${esc(s)}')">${s}</div>`).join("")}</div>
+        <div class="ask-hist" id="ah">
+          <div class="dm ai">${S.askConvo[1]?.content||"Ask me anything about your data."}</div>
+        </div>
+        <div class="ask-row">
+          <input class="ask-inp" id="ai2" placeholder="e.g. Which segment is underperforming?" onkeydown="if(event.key==='Enter')submitAsk()"/>
+          <button class="ask-btn" id="ab" onclick="submitAsk()">Ask ↗</button>
+        </div>
+      </div>`;
+  }
+}
+
+function buildCharts(gridId,specs){
+  const grid=document.getElementById(gridId);
+  specs.forEach((c,ci)=>{
+    const card=document.createElement("div");
+    card.className=`cc s${c.span||6}`;
+    card.innerHTML=`
+      <h3>${c.title}<span class="atype at-${c.analyticsType||"descriptive"}">${c.analyticsType||""}</span></h3>
+      <div class="cc-sub">${c.subtitle||""}</div>
+    `;
+    const canvas=document.createElement("canvas");
+    card.appendChild(canvas);
+    grid.appendChild(card);
+    const isDoughnut=["doughnut","pie"].includes(c.type);
+    const isRadar=c.type==="radar";
+    const datasets=(c.datasets||[]).map((ds,di)=>({
+      ...ds,
+      backgroundColor:isDoughnut?(c.labels||[]).map((_,li)=>PAL[li%PAL.length]+"cc")
+        :isRadar?PAL[(ci+di)%PAL.length]+"44":PAL[(ci+di)%PAL.length]+"99",
+      borderColor:isDoughnut?(c.labels||[]).map((_,li)=>PAL[li%PAL.length]):PAL[(ci+di)%PAL.length],
+      borderWidth:2,borderRadius:c.type==="bar"?6:0,
+      tension:0.4,fill:c.type==="line"?"origin":false,
+      pointRadius:c.type==="line"?4:undefined,
+      pointBackgroundColor:c.type==="line"?PAL[(ci+di)%PAL.length]:undefined
+    }));
+    const chart=new Chart(canvas,{
+      type:c.type||"bar",
+      data:{labels:c.labels||[],datasets},
+      options:{
+        responsive:true,
+        plugins:{legend:{labels:{color:"#a0a0c0",font:{family:"Instrument Sans",size:11}}}},
+        scales:(isDoughnut||isRadar)
+          ?(isRadar?{r:{ticks:{color:"#6b6b8a",backdropColor:"transparent",font:{size:10}},grid:{color:"rgba(255,255,255,0.06)"},pointLabels:{color:"#a0a0c0",font:{size:11}}}}:{})
+          :{
+            x:{ticks:{color:"#6b6b8a",font:{size:11}},grid:{color:"rgba(255,255,255,0.04)"}},
+            y:{ticks:{color:"#6b6b8a",font:{size:11}},grid:{color:"rgba(255,255,255,0.04)"}}
+          }
+      }
+    });
+    S.activeCharts.push(chart);
+  });
+}
+
+// ─────────────────────────────────────────
+// ASK AI
+// ─────────────────────────────────────────
+function fillAsk(q){
+  document.getElementById("ai2").value=q;
+  document.getElementById("ai2").focus();
+}
+
+async function submitAsk(){
+  const inp=document.getElementById("ai2");
+  const q=inp.value.trim();if(!q)return;
+  inp.value="";
+  const btn=document.getElementById("ab");btn.disabled=true;
+  const hist=document.getElementById("ah");
+  hist.innerHTML+=`<div class="dm user">${esc(q)}</div>`;
+  const thinkEl=document.createElement("div");
+  thinkEl.className="dm ai";
+  thinkEl.innerHTML=`<div class="typing"><span></span><span></span><span></span></div>`;
+  hist.appendChild(thinkEl);hist.scrollTop=hist.scrollHeight;
+  S.askConvo.push({role:"user",content:q});
+  try{
+    const msgs=[{role:"system",content:S.askSys},...S.askConvo.slice(-8)];
+    const reply=await groq(msgs);
+    thinkEl.textContent=reply;
+    S.askConvo.push({role:"assistant",content:reply});
+  }catch(e){thinkEl.textContent="Error: "+e.message}
+  hist.scrollTop=hist.scrollHeight;
+  btn.disabled=false;
+}
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function reset(){
+  S={headers:[],data:[],fileName:"",persona:{role:"",expertise:"",goal:"",style:""},spec:null,activeCharts:[],askConvo:[],askSys:""};
+  document.getElementById("fi").value="";
+  show("su");
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+function md(s){return s.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>")}
+</script>
+</body>
+</html>
